@@ -1,2 +1,4 @@
 requests
 newsapi-python
+gspread
+oauth2client
