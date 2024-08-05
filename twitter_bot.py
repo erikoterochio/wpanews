@@ -51,9 +51,9 @@ def load_data():
     else:
         return {
             'posted_articles': [row['url'] for row in data],
-            'news_api_requests': data[-1]['news_api_requests'],
-            'tweets_today': data[-1]['tweets_today'],
-            'tweets_this_month': data[-1]['tweets_this_month'],
+            'news_api_requests': int(data[-1]['news_api_requests']),  # Convert to int
+            'tweets_today': int(data[-1]['tweets_today']),  # Convert to int
+            'tweets_this_month': int(data[-1]['tweets_this_month']),  # Convert to int
             'last_tweet_time': data[-1]['last_tweet_time']
         }
 
