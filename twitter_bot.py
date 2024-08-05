@@ -39,9 +39,14 @@ def get_sheet():
 def load_data():
     sheet = get_sheet()
     all_data = sheet.get_all_values()
+    logging.debug(f"Raw sheet data: {all_data}")
     
-    if len(all_data) <= 1:  # Only header row or empty sheet
-        sheet.append_row(['url', 'timestamp', 'news_api_requests', 'tweets_today', 'tweets_this_month', 'last_tweet_time'])
+    expected_headers = ['url', 'timestamp', 'news_api_requests', 'tweets_today', 'tweets_this_month', 'last_tweet_time']
+    
+    if not all_data:
+        # Sheet is completely empty, add headers
+        logging.info("Initializing empty sheet with headers")
+        sheet.append_row(expected_headers)
         return {
             'posted_articles': [],
             'news_api_requests': 0,
@@ -51,25 +56,53 @@ def load_data():
         }
     else:
         headers = all_data[0]
+        logging.debug(f"Existing headers: {headers}")
+        
+        if headers != expected_headers:
+            logging.warning(f"Existing headers do not match expected headers. Existing: {headers}, Expected: {expected_headers}")
+            # You might want to handle this situation, e.g., by updating the headers or raising an error
+        
+        if len(all_data) == 1:  # Only headers exist
+            logging.info("Sheet only contains headers, no data yet")
+            return {
+                'posted_articles': [],
+                'news_api_requests': 0,
+                'tweets_today': 0,
+                'tweets_this_month': 0,
+                'last_tweet_time': None
+            }
+        
         data = all_data[1:]  # Exclude header row
+        logging.debug(f"Data rows: {data}")
         
-        # Find the index of each column
-        url_index = headers.index('url')
-        news_api_requests_index = headers.index('news_api_requests')
-        tweets_today_index = headers.index('tweets_today')
-        tweets_this_month_index = headers.index('tweets_this_month')
-        last_tweet_time_index = headers.index('last_tweet_time')
-        
-        # Get the last row of data
-        last_row = data[-1]
-        
-        return {
-            'posted_articles': [row[url_index] for row in data if row[url_index]],
-            'news_api_requests': int(last_row[news_api_requests_index] or 0),
-            'tweets_today': int(last_row[tweets_today_index] or 0),
-            'tweets_this_month': int(last_row[tweets_this_month_index] or 0),
-            'last_tweet_time': last_row[last_tweet_time_index] if last_row[last_tweet_time_index] else None
-        }
+        try:
+            # Find the index of each column
+            url_index = headers.index('url')
+            news_api_requests_index = headers.index('news_api_requests')
+            tweets_today_index = headers.index('tweets_today')
+            tweets_this_month_index = headers.index('tweets_this_month')
+            last_tweet_time_index = headers.index('last_tweet_time')
+            
+            # Get the last row of data
+            last_row = data[-1]
+            logging.debug(f"Last row: {last_row}")
+            
+            return {
+                'posted_articles': [row[url_index] for row in data if row[url_index]],
+                'news_api_requests': int(last_row[news_api_requests_index]) if last_row[news_api_requests_index].isdigit() else 0,
+                'tweets_today': int(last_row[tweets_today_index]) if last_row[tweets_today_index].isdigit() else 0,
+                'tweets_this_month': int(last_row[tweets_this_month_index]) if last_row[tweets_this_month_index].isdigit() else 0,
+                'last_tweet_time': last_row[last_tweet_time_index] if last_row[last_tweet_time_index] else None
+            }
+        except Exception as e:
+            logging.error(f"Error processing sheet data: {e}")
+            return {
+                'posted_articles': [],
+                'news_api_requests': 0,
+                'tweets_today': 0,
+                'tweets_this_month': 0,
+                'last_tweet_time': None
+            }
 
 def save_data(data, url):
     sheet = get_sheet()
