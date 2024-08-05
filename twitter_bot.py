@@ -38,8 +38,9 @@ def get_sheet():
 
 def load_data():
     sheet = get_sheet()
-    data = sheet.get_all_records()
-    if not data:
+    all_data = sheet.get_all_values()
+    
+    if len(all_data) <= 1:  # Only header row or empty sheet
         sheet.append_row(['url', 'timestamp', 'news_api_requests', 'tweets_today', 'tweets_this_month', 'last_tweet_time'])
         return {
             'posted_articles': [],
@@ -49,12 +50,25 @@ def load_data():
             'last_tweet_time': None
         }
     else:
+        headers = all_data[0]
+        data = all_data[1:]  # Exclude header row
+        
+        # Find the index of each column
+        url_index = headers.index('url')
+        news_api_requests_index = headers.index('news_api_requests')
+        tweets_today_index = headers.index('tweets_today')
+        tweets_this_month_index = headers.index('tweets_this_month')
+        last_tweet_time_index = headers.index('last_tweet_time')
+        
+        # Get the last row of data
+        last_row = data[-1]
+        
         return {
-            'posted_articles': [row['url'] for row in data],
-            'news_api_requests': int(data[-1]['news_api_requests']),  # Convert to int
-            'tweets_today': int(data[-1]['tweets_today']),  # Convert to int
-            'tweets_this_month': int(data[-1]['tweets_this_month']),  # Convert to int
-            'last_tweet_time': data[-1]['last_tweet_time']
+            'posted_articles': [row[url_index] for row in data if row[url_index]],
+            'news_api_requests': int(last_row[news_api_requests_index] or 0),
+            'tweets_today': int(last_row[tweets_today_index] or 0),
+            'tweets_this_month': int(last_row[tweets_this_month_index] or 0),
+            'last_tweet_time': last_row[last_tweet_time_index] if last_row[last_tweet_time_index] else None
         }
 
 def save_data(data, url):
