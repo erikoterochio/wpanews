@@ -15,7 +15,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.9'  # Specify the version of Python you're using
+        python-version: '3.9'
 
     - name: Install dependencies
       run: |
@@ -26,4 +26,6 @@ jobs:
       env:
         NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         TWITTER_AUTH: ${{ secrets.TWITTER_AUTH }}
-      run: python twitter_bot.py  # Make sure this matches your script's filename
+        GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+        SHEET_ID: ${{ secrets.SHEET_ID }}
+      run: python twitter_bot.py
