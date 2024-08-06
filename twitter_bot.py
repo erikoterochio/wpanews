@@ -8,10 +8,7 @@ import requests
 import gspread
 import tweepy
 import re
-from textblob import TextBlob
-import nltk
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+from string
 
 
 # Set up logging
@@ -155,9 +152,6 @@ def is_valid_article(article, posted_articles):
         return False
     return True
 
-import re
-from textblob import TextBlob
-
 def create_tweet_text(all_articles, posted_articles):
     if not all_articles or "articles" not in all_articles:
         logging.warning("No articles found in the API response")
@@ -170,11 +164,10 @@ def create_tweet_text(all_articles, posted_articles):
             url = article.get("url", "")
 
             # Create a summary
-            full_text = f"{title}. {description}"
-            summary = summarize_text(full_text, 180)  # Leave room for URL and hashtags
+            summary = summarize_text(f"{title}. {description}", 180)  # Leave room for URL and hashtags
 
             # Generate hashtags
-            hashtags = generate_hashtags(full_text)
+            hashtags = generate_hashtags(f"{title} {description}")
 
             # Construct the tweet
             tweet_text = f"{summary}\n{url}\n{' '.join(hashtags)}"
@@ -190,7 +183,6 @@ def create_tweet_text(all_articles, posted_articles):
     return None, None
 
 def summarize_text(text, max_length):
-    # Simple summarization: take the first sentence that fits
     sentences = re.split(r'(?<=[.!?]) +', text)
     summary = ""
     for sentence in sentences:
@@ -201,15 +193,25 @@ def summarize_text(text, max_length):
     return summary.strip()
 
 def generate_hashtags(text):
-    blob = TextBlob(text)
-    noun_phrases = blob.noun_phrases
+    # Simple word frequency-based hashtag generation
+    words = re.findall(r'\w+', text.lower())
+    word_freq = {}
+    for word in words:
+        if len(word) > 3:  # Ignore short words
+            word_freq[word] = word_freq.get(word, 0) + 1
+    
+    # Sort words by frequency, then by length (prefer longer words)
+    sorted_words = sorted(word_freq.items(), key=lambda x: (-x[1], -len(x[0])))
+    
     hashtags = []
-    for phrase in noun_phrases:
-        hashtag = "#" + "".join(word.capitalize() for word in phrase.split())
-        if len(hashtags) < 2 and hashtag not in hashtags:
-            hashtags.append(hashtag)
-        if len(hashtags) == 2:
-            break
+    for word, _ in sorted_words:
+        if word not in string.ascii_lowercase:  # Avoid common words
+            hashtag = "#" + word.capitalize()
+            if len(hashtags) < 2 and hashtag not in hashtags:
+                hashtags.append(hashtag)
+            if len(hashtags) == 2:
+                break
+    
     return hashtags
 
 def getClient():
