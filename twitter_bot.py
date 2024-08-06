@@ -7,6 +7,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 import requests
 import gspread
 import tweepy
+import re
+from textblob import TextBlob
+import nltk
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -149,6 +155,9 @@ def is_valid_article(article, posted_articles):
         return False
     return True
 
+import re
+from textblob import TextBlob
+
 def create_tweet_text(all_articles, posted_articles):
     if not all_articles or "articles" not in all_articles:
         logging.warning("No articles found in the API response")
@@ -156,16 +165,52 @@ def create_tweet_text(all_articles, posted_articles):
 
     for article in all_articles["articles"]:
         if is_valid_article(article, posted_articles):
-            author = article.get("author", "Unknown Author")
-            title = article.get("title", "No Title")
-            description = article.get("description", "No Description")
+            title = article.get("title", "").strip()
+            description = article.get("description", "").strip()
             url = article.get("url", "")
-            tweet_text = f"{author}: {title}\n{description}\nLink: {url}"
+
+            # Create a summary
+            full_text = f"{title}. {description}"
+            summary = summarize_text(full_text, 180)  # Leave room for URL and hashtags
+
+            # Generate hashtags
+            hashtags = generate_hashtags(full_text)
+
+            # Construct the tweet
+            tweet_text = f"{summary}\n{url}\n{' '.join(hashtags)}"
+
+            # Ensure the tweet is within the character limit
+            if len(tweet_text) > 280:
+                tweet_text = tweet_text[:277] + "..."
+
             logging.info(f"Created tweet text: {tweet_text[:50]}...")
             return tweet_text, url
     
     logging.warning("No valid article found to tweet")
     return None, None
+
+def summarize_text(text, max_length):
+    # Simple summarization: take the first sentence that fits
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    summary = ""
+    for sentence in sentences:
+        if len(summary) + len(sentence) <= max_length:
+            summary += sentence + " "
+        else:
+            break
+    return summary.strip()
+
+def generate_hashtags(text):
+    blob = TextBlob(text)
+    noun_phrases = blob.noun_phrases
+    hashtags = []
+    for phrase in noun_phrases:
+        hashtag = "#" + "".join(word.capitalize() for word in phrase.split())
+        if len(hashtags) < 2 and hashtag not in hashtags:
+            hashtags.append(hashtag)
+        if len(hashtags) == 2:
+            break
+    return hashtags
 
 def getClient():
     client = tweepy.Client(
