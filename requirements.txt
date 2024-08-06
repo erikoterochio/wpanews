@@ -4,5 +4,3 @@ gspread
 oauth2client
 requests_oauthlib 
 tweepy
-nltk
-textblob
