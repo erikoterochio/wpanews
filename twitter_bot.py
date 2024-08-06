@@ -8,7 +8,7 @@ import requests
 import gspread
 import tweepy
 import re
-from string
+import string
 
 
 # Set up logging
