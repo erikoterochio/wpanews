@@ -5,7 +5,7 @@ from datetime import datetime
 from newsapi import NewsApiClient
 import requests
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import tweepy
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,21 +14,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 NEWS_API_URL = 'https://newsapi.org/v2/top-headlines'
 TWITTER_API_URL = "https://api.twitter.com/2/tweets"
-TWITTER_BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")
-
-TWITTER_HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {TWITTER_BEARER_TOKEN}",
-    "User-Agent": "PostmanRuntime/7.40.0",
-    "Accept": "*/*",
-    "Host": "api.twitter.com",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive"
-}
+API_KEY = os.environ.get("API_KEY")
+APOI_KEY_SECRET = os.environ.get("API_KEY_SECRET")
+ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
+ACCESS_TOKEN_SECRET = os.environ.get("ACCESS_TOKEN_SECRET")
 
 # Google Sheets setup
-GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
-SHEET_ID = os.environ.get("SHEET_ID")
+# GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
+# SHEET_ID = os.environ.get("SHEET_ID")
 
 def get_sheet():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(
@@ -128,7 +121,7 @@ def get_news(data):
     logging.info("Fetching news articles...")
     try:
         newsapi = NewsApiClient(api_key=NEWS_API_KEY)
-        all_articles = newsapi.get_everything(q='politics OR government OR international OR president',
+        all_articles = newsapi.get_everything(q='(politics OR government OR president) AND NOT (ads OR wired)',
                                               language='en',
                                               sort_by='popularity',
                                               page=1,
@@ -173,7 +166,16 @@ def create_tweet_text(all_articles, posted_articles):
     logging.warning("No valid article found to tweet")
     return None, None
 
-def post_tweet(tweet_text, data):
+def getClient():
+    client = tweepy.Client(
+        consumer_key=API_KEY,
+        consumer_secret=API_KEY_SECRET,
+        access_token=ACCESS_TOKEN,
+        access_token_secret=ACCESS_TOKEN_SECRET
+    )
+    return client
+
+def post_tweet(tweet_text, data, client):
     current_time = datetime.now()
     
     # Reset daily and monthly counters if needed
@@ -196,11 +198,9 @@ def post_tweet(tweet_text, data):
         logging.warning("No tweet text provided")
         return False
 
-    tweet_data = {"text": tweet_text}
     try:
         logging.info("Attempting to post tweet...")
-        response = requests.post(TWITTER_API_URL, headers=TWITTER_HEADERS, json=tweet_data)
-        response.raise_for_status()
+        response = client.create_tweet(text=tweet_text)  # Changed this line
         logging.info("Tweet posted successfully")
         
         data['tweets_today'] += 1
@@ -208,10 +208,8 @@ def post_tweet(tweet_text, data):
         data['last_tweet_time'] = current_time.isoformat()
         
         return True
-    except requests.exceptions.RequestException as e:
+    except Exception as e:  # Changed to catch any exception
         logging.error(f"Failed to post tweet: {e}")
-        logging.error(f"Response status code: {response.status_code}")
-        logging.error(f"Response text: {response.text}")
         return False
 
 def main():
@@ -219,8 +217,9 @@ def main():
         data = load_data()
         all_articles = get_news(data)
         if all_articles:
+            client = getClient()
             tweet_text, article_url = create_tweet_text(all_articles, data['posted_articles'])
-            if tweet_text and post_tweet(tweet_text, data):
+            if tweet_text and post_tweet(tweet_text, data, client):
                 save_data(data, article_url)
             else:
                 logging.warning("Failed to create or post tweet")
