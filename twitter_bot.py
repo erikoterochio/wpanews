@@ -21,8 +21,8 @@ ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.environ.get("ACCESS_TOKEN_SECRET")
 
 # Google Sheets setup
-# GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
-# SHEET_ID = os.environ.get("SHEET_ID")
+GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
+SHEET_ID = os.environ.get("SHEET_ID")
 
 def get_sheet():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(
