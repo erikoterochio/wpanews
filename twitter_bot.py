@@ -16,7 +16,7 @@ NEWS_API_URL = 'https://newsapi.org/v2/top-headlines'
 TWITTER_API_URL = "https://api.twitter.com/2/tweets"
 TWITTER_HEADERS = {
     "Content-Type": "application/json",
-    "Authorization": os.environ.get("TWITTER_AUTH"),
+    "Authorization": 'OAuth oauth_consumer_key="qhGDINQtuSxZ7ByLFcLXuxDba",oauth_token="1420207912471965700-EUaaDeg52sGHBXEf8zcDHKv4TPdVZ9",oauth_signature_method="HMAC-SHA1",oauth_timestamp="1722730925",oauth_nonce="81f5Pq1qyBe",oauth_version="1.0",oauth_signature="WfQKNR3ujrNknmO5wPko0zWKE%2FQ%3D"',,
     "User-Agent": "PostmanRuntime/7.40.0",
     "Accept": "*/*",
     "Host": "api.twitter.com",
