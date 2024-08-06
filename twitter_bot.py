@@ -14,9 +14,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 NEWS_API_URL = 'https://newsapi.org/v2/top-headlines'
 TWITTER_API_URL = "https://api.twitter.com/2/tweets"
+TWITTER_BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")
+
 TWITTER_HEADERS = {
     "Content-Type": "application/json",
-    "Authorization": 'OAuth oauth_consumer_key="qhGDINQtuSxZ7ByLFcLXuxDba",oauth_token="1420207912471965700-EUaaDeg52sGHBXEf8zcDHKv4TPdVZ9",oauth_signature_method="HMAC-SHA1",oauth_timestamp="1722730925",oauth_nonce="81f5Pq1qyBe",oauth_version="1.0",oauth_signature="WfQKNR3ujrNknmO5wPko0zWKE%2FQ%3D"',
+    "Authorization": f"Bearer {TWITTER_BEARER_TOKEN}",
     "User-Agent": "PostmanRuntime/7.40.0",
     "Accept": "*/*",
     "Host": "api.twitter.com",
