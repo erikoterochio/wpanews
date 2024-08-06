@@ -6,29 +6,23 @@ from newsapi import NewsApiClient
 import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from requests_oauthlib import OAuth1
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configuration
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 NEWS_API_URL = 'https://newsapi.org/v2/top-headlines'
 TWITTER_API_URL = "https://api.twitter.com/2/tweets"
-
-# Twitter OAuth 1.0a credentials
-TWITTER_CONSUMER_KEY = os.environ.get("TWITTER_CONSUMER_KEY")
-TWITTER_CONSUMER_SECRET = os.environ.get("TWITTER_CONSUMER_SECRET")
-TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN")
-TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
-
-# Create OAuth1 object
-oauth = OAuth1(
-    TWITTER_CONSUMER_KEY,
-    client_secret=TWITTER_CONSUMER_SECRET,
-    resource_owner_key=TWITTER_ACCESS_TOKEN,
-    resource_owner_secret=TWITTER_ACCESS_TOKEN_SECRET
-)
+TWITTER_HEADERS = {
+    "Content-Type": "application/json",
+    "Authorization": os.environ.get("TWITTER_AUTH"),
+    "User-Agent": "PostmanRuntime/7.40.0",
+    "Accept": "*/*",
+    "Host": "api.twitter.com",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive"
+}
 
 # Google Sheets setup
 GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
@@ -203,19 +197,7 @@ def post_tweet(tweet_text, data):
     tweet_data = {"text": tweet_text}
     try:
         logging.info("Attempting to post tweet...")
-        logging.debug(f"Twitter API URL: {TWITTER_API_URL}")
-        logging.debug(f"Tweet data: {tweet_data}")
-        
-        response = requests.post(
-            TWITTER_API_URL,
-            auth=oauth,
-            json=tweet_data,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "PostmanRuntime/7.40.0",
-                "Accept": "*/*",
-            }
-        )
+        response = requests.post(TWITTER_API_URL, headers=TWITTER_HEADERS, json=tweet_data)
         response.raise_for_status()
         logging.info("Tweet posted successfully")
         
@@ -228,10 +210,6 @@ def post_tweet(tweet_text, data):
         logging.error(f"Failed to post tweet: {e}")
         logging.error(f"Response status code: {response.status_code}")
         logging.error(f"Response text: {response.text}")
-        if response.status_code == 401:
-            logging.error("Authentication failed. Please check your Twitter API credentials.")
-            logging.error("Ensure that your OAuth credentials are correct and have the necessary permissions.")
-            logging.error("Verify that your Twitter Developer account and app are in good standing.")
         return False
 
 def main():
