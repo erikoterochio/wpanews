@@ -28,4 +28,5 @@ jobs:
         # TWITTER_AUTH: ${{ secrets.TWITTER_AUTH }}
         GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
         SHEET_ID: ${{ secrets.SHEET_ID }}
+        TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
       run: python twitter_bot.py
