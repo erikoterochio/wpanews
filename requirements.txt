@@ -3,3 +3,5 @@ newsapi-python
 gspread
 oauth2client
 requests_oauthlib 
+tweepy
+yaml
