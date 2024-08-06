@@ -15,7 +15,7 @@ NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 NEWS_API_URL = 'https://newsapi.org/v2/top-headlines'
 TWITTER_API_URL = "https://api.twitter.com/2/tweets"
 API_KEY = os.environ.get("API_KEY")
-APOI_KEY_SECRET = os.environ.get("API_KEY_SECRET")
+API_KEY_SECRET = os.environ.get("API_KEY_SECRET")
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.environ.get("ACCESS_TOKEN_SECRET")
 
