@@ -5,5 +5,4 @@ oauth2client
 requests_oauthlib 
 tweepy
 nltk
-re
 textblob
