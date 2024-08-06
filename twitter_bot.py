@@ -3,6 +3,7 @@ import time
 import logging
 from datetime import datetime
 from newsapi import NewsApiClient
+from oauth2client.service_account import ServiceAccountCredentials
 import requests
 import gspread
 import tweepy
