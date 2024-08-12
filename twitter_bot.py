@@ -261,22 +261,17 @@ def post_tweet(tweet_text, data, client):
         return False
 
 def main():
-    while True:
-        data = load_data()
-        all_articles = get_news(data)
-        if all_articles:
-            client = getClient()
-            tweet_text, article_url = create_tweet_text(all_articles, data['posted_articles'])
-            if tweet_text and post_tweet(tweet_text, data, client):
-                save_data(data, article_url)
-            else:
-                logging.warning("Failed to create or post tweet")
+    data = load_data()
+    all_articles = get_news(data)
+    if all_articles:
+        client = getClient()
+        tweet_text, article_url = create_tweet_text(all_articles, data['posted_articles'])
+        if tweet_text and post_tweet(tweet_text, data, client):
+            save_data(data, article_url)
         else:
-            logging.warning("No news articles found or API limit reached")
-        
-        # Wait for 60 minutes before the next iteration
-        logging.info(f"Next update in 60 minutes. Current time: {datetime.now()}")
-        time.sleep(60 * 60)
+            logging.warning("Failed to create or post tweet")
+    else:
+        logging.warning("No news articles found or API limit reached")
 
 if __name__ == "__main__":
     main()
