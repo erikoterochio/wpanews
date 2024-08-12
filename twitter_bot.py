@@ -1,15 +1,13 @@
 import os
-import time
 import logging
 from datetime import datetime
 from newsapi import NewsApiClient
 from oauth2client.service_account import ServiceAccountCredentials
-import requests
 import gspread
 import tweepy
+import spacy
+from collections import Counter
 import re
-import string
-
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,6 +25,9 @@ ACCESS_TOKEN_SECRET = os.environ.get("ACCESS_TOKEN_SECRET")
 GOOGLE_SHEETS_CREDENTIALS = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
 SHEET_ID = os.environ.get("SHEET_ID")
 
+# Load the English NLP model
+nlp = spacy.load("en_core_web_sm")
+
 def get_sheet():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(
         eval(GOOGLE_SHEETS_CREDENTIALS),
@@ -43,7 +44,6 @@ def load_data():
     expected_headers = ['url', 'timestamp', 'news_api_requests', 'tweets_today', 'tweets_this_month', 'last_tweet_time']
     
     if not all_data:
-        # Sheet is completely empty, add headers
         logging.info("Initializing empty sheet with headers")
         sheet.append_row(expected_headers)
         return {
@@ -59,9 +59,8 @@ def load_data():
         
         if headers != expected_headers:
             logging.warning(f"Existing headers do not match expected headers. Existing: {headers}, Expected: {expected_headers}")
-            # You might want to handle this situation, e.g., by updating the headers or raising an error
         
-        if len(all_data) == 1:  # Only headers exist
+        if len(all_data) == 1:
             logging.info("Sheet only contains headers, no data yet")
             return {
                 'posted_articles': [],
@@ -71,18 +70,16 @@ def load_data():
                 'last_tweet_time': None
             }
         
-        data = all_data[1:]  # Exclude header row
+        data = all_data[1:]
         logging.debug(f"Data rows: {data}")
         
         try:
-            # Find the index of each column
             url_index = headers.index('url')
             news_api_requests_index = headers.index('news_api_requests')
             tweets_today_index = headers.index('tweets_today')
             tweets_this_month_index = headers.index('tweets_this_month')
             last_tweet_time_index = headers.index('last_tweet_time')
             
-            # Get the last row of data
             last_row = data[-1]
             logging.debug(f"Last row: {last_row}")
             
@@ -115,9 +112,6 @@ def save_data(data, url):
     ])
 
 def get_news(data):
-    current_time = datetime.now()
-    
-    # Check if we've exceeded the monthly limit
     if data['news_api_requests'] >= 1000:
         logging.warning("Monthly NewsAPI request limit reached")
         return None
@@ -152,6 +146,38 @@ def is_valid_article(article, posted_articles):
         return False
     return True
 
+def summarize_text(text, max_length):
+    doc = nlp(text)
+    sentences = list(doc.sents)
+    summary = ""
+    for sentence in sentences:
+        if len(summary) + len(sentence.text) <= max_length:
+            summary += sentence.text + " "
+        else:
+            break
+    return summary.strip()
+
+def generate_hashtags(text):
+    doc = nlp(text)
+    
+    entities = [ent.text.lower() for ent in doc.ents if ent.label_ in ['ORG', 'PERSON', 'GPE', 'EVENT']]
+    noun_chunks = [chunk.text.lower() for chunk in doc.noun_chunks if len(chunk) > 1]
+    
+    important_phrases = entities + noun_chunks
+    phrase_counts = Counter(important_phrases)
+    
+    sorted_phrases = sorted(phrase_counts.items(), key=lambda x: (-x[1], -len(x[0])))
+    
+    hashtags = []
+    for phrase, _ in sorted_phrases:
+        if len(hashtags) >= 3:
+            break
+        hashtag = "#" + "".join(word.capitalize() for word in phrase.split())
+        if hashtag not in hashtags and len(hashtag) > 1:
+            hashtags.append(hashtag)
+    
+    return hashtags
+
 def create_tweet_text(all_articles, posted_articles):
     if not all_articles or "articles" not in all_articles:
         logging.warning("No articles found in the API response")
@@ -163,16 +189,13 @@ def create_tweet_text(all_articles, posted_articles):
             description = article.get("description", "").strip()
             url = article.get("url", "")
 
-            # Create a summary
-            summary = summarize_text(f"{title}. {description}", 180)  # Leave room for URL and hashtags
+            full_text = f"{title}. {description}"
+            summary = summarize_text(full_text, 180)
 
-            # Generate hashtags
-            hashtags = generate_hashtags(f"{title} {description}")
+            hashtags = generate_hashtags(full_text)
 
-            # Construct the tweet
             tweet_text = f"{summary}\n{url}\n{' '.join(hashtags)}"
 
-            # Ensure the tweet is within the character limit
             if len(tweet_text) > 280:
                 tweet_text = tweet_text[:277] + "..."
 
@@ -181,38 +204,6 @@ def create_tweet_text(all_articles, posted_articles):
     
     logging.warning("No valid article found to tweet")
     return None, None
-
-def summarize_text(text, max_length):
-    sentences = re.split(r'(?<=[.!?]) +', text)
-    summary = ""
-    for sentence in sentences:
-        if len(summary) + len(sentence) <= max_length:
-            summary += sentence + " "
-        else:
-            break
-    return summary.strip()
-
-def generate_hashtags(text):
-    # Simple word frequency-based hashtag generation
-    words = re.findall(r'\w+', text.lower())
-    word_freq = {}
-    for word in words:
-        if len(word) > 3:  # Ignore short words
-            word_freq[word] = word_freq.get(word, 0) + 1
-    
-    # Sort words by frequency, then by length (prefer longer words)
-    sorted_words = sorted(word_freq.items(), key=lambda x: (-x[1], -len(x[0])))
-    
-    hashtags = []
-    for word, _ in sorted_words:
-        if word not in string.ascii_lowercase:  # Avoid common words
-            hashtag = "#" + word.capitalize()
-            if len(hashtags) < 2 and hashtag not in hashtags:
-                hashtags.append(hashtag)
-            if len(hashtags) == 2:
-                break
-    
-    return hashtags
 
 def getClient():
     client = tweepy.Client(
@@ -226,7 +217,6 @@ def getClient():
 def post_tweet(tweet_text, data, client):
     current_time = datetime.now()
     
-    # Reset daily and monthly counters if needed
     if data['last_tweet_time']:
         last_tweet = datetime.fromisoformat(data['last_tweet_time'])
         if current_time.date() != last_tweet.date():
@@ -234,7 +224,6 @@ def post_tweet(tweet_text, data, client):
         if current_time.month != last_tweet.month:
             data['tweets_this_month'] = 0
 
-    # Check if we've exceeded the daily or monthly limit
     if data['tweets_today'] >= 50:
         logging.warning("Daily tweet limit reached")
         return False
@@ -248,7 +237,7 @@ def post_tweet(tweet_text, data, client):
 
     try:
         logging.info("Attempting to post tweet...")
-        response = client.create_tweet(text=tweet_text)  # Changed this line
+        response = client.create_tweet(text=tweet_text)
         logging.info("Tweet posted successfully")
         
         data['tweets_today'] += 1
@@ -256,7 +245,7 @@ def post_tweet(tweet_text, data, client):
         data['last_tweet_time'] = current_time.isoformat()
         
         return True
-    except Exception as e:  # Changed to catch any exception
+    except Exception as e:
         logging.error(f"Failed to post tweet: {e}")
         return False
 
