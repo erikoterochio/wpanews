@@ -160,20 +160,31 @@ def summarize_text(text, max_length):
 def generate_hashtags(text):
     doc = nlp(text)
     
+    # Extract entities and noun chunks
     entities = [ent.text.lower() for ent in doc.ents if ent.label_ in ['ORG', 'PERSON', 'GPE', 'EVENT']]
-    noun_chunks = [chunk.text.lower() for chunk in doc.noun_chunks if len(chunk) > 1]
+    noun_chunks = [chunk.text.lower() for chunk in doc.noun_chunks if len(chunk.text.split()) <= 2]
     
+    # Combine and count occurrences
     important_phrases = entities + noun_chunks
     phrase_counts = Counter(important_phrases)
     
-    sorted_phrases = sorted(phrase_counts.items(), key=lambda x: (-x[1], -len(x[0])))
+    # Sort phrases by count (descending) and then by length (ascending)
+    sorted_phrases = sorted(phrase_counts.items(), key=lambda x: (-x[1], len(x[0])))
     
     hashtags = []
     for phrase, _ in sorted_phrases:
         if len(hashtags) >= 3:
             break
-        hashtag = "#" + "".join(word.capitalize() for word in phrase.split())
-        if hashtag not in hashtags and len(hashtag) > 1:
+        
+        # Clean the phrase: remove non-alphanumeric characters and spaces
+        clean_phrase = re.sub(r'[^\w\s]', '', phrase)
+        clean_phrase = re.sub(r'\s+', '', clean_phrase)
+        
+        # Capitalize each word
+        hashtag = "#" + clean_phrase.title()
+        
+        # Ensure the hashtag is not too long and not already in the list
+        if len(hashtag) > 1 and len(hashtag) <= 20 and hashtag not in hashtags:
             hashtags.append(hashtag)
     
     return hashtags
