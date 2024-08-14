@@ -123,7 +123,7 @@ def get_news(data):
                                               language='en',
                                               sort_by='popularity',
                                               page=1,
-                                              page_size=100)
+                                              page_size=500)
         
         data['news_api_requests'] += 1
         logging.info(f"Retrieved {len(all_articles.get('articles', []))} articles")
