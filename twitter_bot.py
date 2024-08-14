@@ -119,11 +119,11 @@ def get_news(data):
     logging.info("Fetching news articles...")
     try:
         newsapi = NewsApiClient(api_key=NEWS_API_KEY)
-        all_articles = newsapi.get_everything(q='politics government (president OR Biden OR Trump OR Kamala OR Harris OR Democrats OR Republicans) -ads -wired',
+        all_articles = newsapi.get_everything(q='politics OR government OR elections OR (president OR Biden OR Trump OR Kamala OR Harris OR Democrats OR Republicans) -ads -wired',
                                               language='en',
                                               sort_by='popularity',
                                               page=1,
-                                              page_size=500)
+                                              page_size=100)
         
         data['news_api_requests'] += 1
         logging.info(f"Retrieved {len(all_articles.get('articles', []))} articles")
